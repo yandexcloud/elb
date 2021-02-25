@@ -1,0 +1,22 @@
+version: "3.8"
+services:
+  igcds:
+    image: yandexcloud/igcds:1.0.0
+    container_name: igcds
+    build:
+      context: pkg/igcds
+    environment:
+      YANDEX_TOKEN: ${YANDEX_TOKEN}
+    volumes:
+    - ./etc/ssl/certs:/etc/ssl/certs
+    - ./.tmp:/run/config
+  igdns:
+    image: yandexcloud/igdns:1.0.0
+    container_name: igdns
+    build:
+      context: pkg/igdns
+    environment:
+      YANDEX_TOKEN: ${YANDEX_TOKEN}
+      IGDNS_LOG_LEVEL: debug
+    volumes:
+    - ./etc/ssl/certs:/etc/ssl/certs

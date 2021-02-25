@@ -1,0 +1,91 @@
+kernel:
+  image: linuxkit/kernel:5.4.39
+  cmdline: "console=ttyS0"
+init:
+- linuxkit/init:a68f9fa0c1d9dbfc9c23663749a0b7ac510cbe1c
+- linuxkit/runc:v0.8
+- linuxkit/containerd:a4aa19c608556f7d786852557c36136255220c1f
+- linuxkit/ca-certificates:v0.8
+onboot:
+- name: sysfs
+  image: linuxkit/sysfs:v0.8
+- name: dhcpcd
+  image: linuxkit/dhcpcd:v0.8
+  command: ['/sbin/dhcpcd', '--nobackground', '-f', '/dhcpcd.conf', '-1']
+- name: metadata
+  image: yandexcloud/metadata:1.0.0
+  cwd: /run/config
+  binds:
+  - /run:/run
+  runtime:
+    mkdir:
+    - /run/config
+- name: userdata
+  image: containerskit/userdata:1.1.0
+  cwd: /run/config
+  binds:
+  - /run/config:/run/config
+  command: ['/bin/userdata', '-path', '/run/config/userdata']
+- name: hostname
+  image: containerskit/hostname:1.0.0
+  uts: host
+  command: ['/bin/hostname', '/run/config/local_hostname']
+  binds:
+  - /run/config:/run/config
+  capabilities:
+  - CAP_SYS_ADMIN
+services:
+- name: rngd
+  image: linuxkit/rngd:v0.8
+- name: ntpd
+  image: linuxkit/openntpd:v0.8
+- name: sshd
+  image: containerskit/sshd:1.0.0
+  binds:
+  - /run/config/ssh/authorized_keys:/root/.ssh/authorized_keys
+  - /etc/resolv.conf:/etc/resolv.conf
+  - /etc/ssl/certs:/etc/ssl/certs
+  - /run:/run
+  - /tmp:/tmp
+  - /etc:/hostroot/etc
+  - /usr/bin/ctr:/usr/bin/ctr
+  - /usr/bin/runc:/usr/bin/runc
+  - /containers:/containers
+  - /var/log:/var/log
+  - /var/lib/containerd:/var/lib/containerd
+  - /dev:/dev
+  - /sys:/sys
+  capabilities:
+  - all
+- name: igcds
+  image: yandexcloud/igcds:1.0.0
+  binds:
+  - /etc/resolv.conf:/etc/resolv.conf
+  - /etc/ssl/certs:/etc/ssl/certs
+  - /run/config/xds:/run/config/cds:rw
+  env:
+  - XDS_ENV_FILE=/etc/xds/env
+- name: envoy
+  image: envoyproxy/envoy-alpine:v1.17.0
+  binds:
+  - /etc/resolv.conf:/etc/resolv.conf
+  - /etc/ssl/certs:/etc/ssl/certs
+  - /run/config/xds:/etc/xds
+  - /run/config/envoy/envoy.yaml:/etc/envoy/envoy.yaml
+  - /var/log/envoy:/var/log/envoy
+  runtime:
+    mkdir:
+    - /var/log/envoy
+  command: ['envoy', '-c', '/etc/envoy/envoy.yaml', '-l', 'debug']
+  capabilities:
+  - CAP_NET_BIND_SERVICE
+- name: igdns
+  image: yandexcloud/igdns:1.0.0
+  binds:
+  - /etc/resolv.conf:/etc/resolv.conf
+  - /etc/ssl/certs:/etc/ssl/certs
+  - /run/config/igdns/env:/.env
+trust:
+  org:
+  - linuxkit
+  - library
